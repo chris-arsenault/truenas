@@ -1,0 +1,53 @@
+services:
+  sonarqube:
+    image: sonarqube:lts-community
+    container_name: sonarqube
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://db:5432/sonarqube
+      SONAR_JDBC_USERNAME: sonarqube
+      SONAR_JDBC_PASSWORD_FILE: /run/secrets/db_password
+      SONAR_WEB_CONTEXT: /
+    secrets:
+      - db_password
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+    depends_on:
+      db:
+        condition: service_healthy
+    ulimits:
+      nofile:
+        soft: 131072
+        hard: 131072
+
+  db:
+    image: postgres:16-alpine
+    container_name: sonarqube-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sonarqube
+      POSTGRES_DB: sonarqube
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_password
+    volumes:
+      - postgresql_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sonarqube"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+
+volumes:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:
+  postgresql_data:
