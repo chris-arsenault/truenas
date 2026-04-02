@@ -61,7 +61,7 @@ jobs:
       - uses: chris-arsenault/platform/.github/actions/secret-scan@main
         with:
           image: ghcr.io/chris-arsenault/sonarqube:${{ github.sha }}
-          exclude-paths: sonarqube/.trufflehog-exclude
+          exclude-detectors: Beamer
 
       - name: Push to GHCR
         if: github.ref == 'refs/heads/main'
