@@ -98,89 +98,27 @@ jobs:
         run: |
           set -euo pipefail
           REGION="us-east-1"
-          FN=$(aws ssm get-parameter --name /platform/komodo/function-name \
+          FN=$(aws ssm get-parameter --name /platform/sonarqube/bootstrap-function-name \
             --query Parameter.Value --output text --region "${REGION}")
 
-          # Wait for SonarQube to be healthy
-          echo "Waiting for SonarQube to be healthy..."
-          for i in $(seq 1 40); do
-            RESULT_FILE=$(mktemp)
-            aws lambda invoke \
-              --function-name "${FN}" \
-              --payload '{"actions":[{"type":"HttpCall","url":"http://192.168.66.3:30090/api/system/status","method":"GET","headers":{},"form":{}}]}' \
-              --cli-binary-format raw-in-base64-out \
-              --region "${REGION}" \
-              "${RESULT_FILE}" > /dev/null
-            RESULT=$(cat "${RESULT_FILE}"); rm "${RESULT_FILE}"
-            if echo "${RESULT}" | python3 -c "
-              import sys, json
-              data = json.load(sys.stdin)
-              r = data.get('results', [{}])[0]
-              body = r.get('body', {}).get('body', {})
-              if isinstance(body, str):
-                  body = json.loads(body)
-              if body.get('status') == 'UP':
-                  sys.exit(0)
-              sys.exit(1)
-            " 2>/dev/null; then
-              echo "SonarQube is UP"
-              break
-            fi
-            echo "  attempt ${i}/40, waiting 15s..."
-            sleep 15
-          done
-
-          # Revoke existing CI token (ignore errors)
-          aws lambda invoke \
-            --function-name "${FN}" \
-            --payload "$(python3 -c "
-          import json
-          print(json.dumps({'actions': [{'type': 'HttpCall', 'url': 'http://192.168.66.3:30090/api/user_tokens/revoke', 'method': 'POST', 'headers': {'Authorization': 'ssm:/platform/sonarqube/admin-basic-auth'}, 'form': {'login': 'admin', 'name': 'ci'}}]}))
-          ")" \
-            --cli-binary-format raw-in-base64-out \
-            --region "${REGION}" \
-            /dev/null > /dev/null 2>&1 || true
-
-          # Generate new CI token
+          echo "Bootstrapping SonarQube CI token..."
           RESULT_FILE=$(mktemp)
           aws lambda invoke \
             --function-name "${FN}" \
-            --payload "$(python3 -c "
-          import json
-          print(json.dumps({'actions': [{'type': 'HttpCall', 'url': 'http://192.168.66.3:30090/api/user_tokens/generate', 'method': 'POST', 'headers': {'Authorization': 'ssm:/platform/sonarqube/admin-basic-auth'}, 'form': {'login': 'admin', 'name': 'ci', 'type': 'GLOBAL_ANALYSIS_TOKEN'}}]}))
-          ")" \
+            --payload '{"action":"create-ci-token"}' \
             --cli-binary-format raw-in-base64-out \
             --region "${REGION}" \
             "${RESULT_FILE}" > /dev/null
+
           RESULT=$(cat "${RESULT_FILE}"); rm "${RESULT_FILE}"
 
-          TOKEN=$(echo "${RESULT}" | python3 -c "
-          import sys, json
-          data = json.load(sys.stdin)
-          r = data.get('results', [{}])[0]
-          if not r.get('success'):
-              print(r.get('error', 'unknown error'), file=sys.stderr)
-              sys.exit(1)
-          body = r.get('body', {}).get('body', {})
-          if isinstance(body, str):
-              body = json.loads(body)
-          print(body.get('token', ''), end='')
-          ")
-
-          if [ -z "${TOKEN}" ]; then
-            echo "::error::Failed to generate SonarQube CI token"
+          if echo "${RESULT}" | grep -q '"success":true'; then
+            echo "CI token created and stored in SSM"
+          else
+            echo "::error::SonarQube bootstrap failed"
             echo "${RESULT}" | python3 -m json.tool 2>/dev/null || echo "${RESULT}"
             exit 1
           fi
-
-          echo "::add-mask::${TOKEN}"
-          aws ssm put-parameter \
-            --name /platform/sonarqube/ci-token \
-            --type SecureString \
-            --value "${TOKEN}" \
-            --overwrite \
-            --region "${REGION}"
-          echo "CI token stored in SSM"
         shell: bash
 
   report:

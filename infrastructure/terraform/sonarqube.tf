@@ -64,13 +64,6 @@ resource "aws_ssm_parameter" "sonarqube_admin_password" {
   overwrite = true
 }
 
-resource "aws_ssm_parameter" "sonarqube_admin_basic_auth" {
-  name      = "${local.ssm_prefix}/admin-basic-auth"
-  type      = "SecureString"
-  value     = "Basic ${base64encode("admin:${random_password.sonarqube_admin_password.result}")}"
-  overwrite = true
-}
-
 resource "aws_ssm_parameter" "sonarqube_url" {
   name  = "${local.ssm_prefix}/url"
   type  = "String"
