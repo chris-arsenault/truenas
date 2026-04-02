@@ -35,6 +35,13 @@ jobs:
       - name: Terraform fmt
         run: terraform fmt -check -recursive infrastructure/terraform/
 
+      - name: Install cargo-lambda
+        run: pip3 install cargo-lambda
+
+      - name: Build bootstrap Lambda
+        working-directory: sonarqube/bootstrap
+        run: cargo lambda build --release --output-format zip
+
       - uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ secrets.OIDC_ROLE }}
