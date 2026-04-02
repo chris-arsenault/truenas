@@ -67,11 +67,7 @@ async fn create_ci_token(
     let resp = http
         .post(format!("{base_url}/api/user_tokens/generate"))
         .basic_auth("admin", Some(admin_password))
-        .form(&[
-            ("login", "admin"),
-            ("name", "ci"),
-            ("type", "USER_TOKEN"),
-        ])
+        .form(&[("login", "admin"), ("name", "ci"), ("type", "USER_TOKEN")])
         .send()
         .await
         .map_err(|e| format!("Failed to call token API: {e}"))?;
