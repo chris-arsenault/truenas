@@ -45,8 +45,8 @@ services:
 
         # Change default admin password to the SSM-managed password
         HTTP_CODE=$$(curl -s -o /dev/null -w '%{http_code}' \
+          -u admin:admin \
           -X POST "$${API}/users/change_password" \
-          -H "X-Sonar-Passcode: $${SONAR_ADMIN_PASSCODE}" \
           -d "login=admin&previousPassword=admin&password=$${SONAR_ADMIN_PASSWORD}")
         case "$$HTTP_CODE" in
           204) echo "Admin password set from SSM" ;;
