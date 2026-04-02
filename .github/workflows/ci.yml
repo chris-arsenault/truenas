@@ -75,12 +75,11 @@ jobs:
           role-session-name: GitHubActions-${{ github.run_id }}
           aws-region: us-east-1
 
-      # TODO: Enable after sonarqube-bootstrap Lambda creates the CI token
-      # - uses: chris-arsenault/platform/.github/actions/sonar-scan@main
-      #   with:
-      #     project-key: truenas
-      #     sources: infrastructure/terraform,sonarqube
-      #     exclusions: "**/.terraform/**"
+      - uses: chris-arsenault/platform/.github/actions/sonar-scan@main
+        with:
+          project-key: truenas
+          sources: infrastructure/terraform,sonarqube
+          exclusions: "**/.terraform/**,**/target/**"
 
       - name: Terraform deploy
         if: github.ref == 'refs/heads/main'
