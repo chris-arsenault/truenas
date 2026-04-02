@@ -34,16 +34,13 @@ async fn get_ssm_value(ssm: &SsmClient, name: &str) -> Result<String, String> {
 async fn wait_for_healthy(http: &reqwest::Client, base_url: &str) -> Result<(), String> {
     let url = format!("{base_url}/api/system/status");
     for attempt in 1..=40 {
-        match http.get(&url).send().await {
-            Ok(resp) => {
-                if let Ok(body) = resp.json::<serde_json::Value>().await {
-                    if body.get("status").and_then(|s| s.as_str()) == Some("UP") {
-                        info!(attempt, "SonarQube is healthy");
-                        return Ok(());
-                    }
+        if let Ok(resp) = http.get(&url).send().await {
+            if let Ok(body) = resp.json::<serde_json::Value>().await {
+                if body.get("status").and_then(|s| s.as_str()) == Some("UP") {
+                    info!(attempt, "SonarQube is healthy");
+                    return Ok(());
                 }
             }
-            Err(_) => {}
         }
         if attempt < 40 {
             info!(attempt, "Waiting for SonarQube health...");
