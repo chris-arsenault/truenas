@@ -80,7 +80,7 @@ jobs:
           secrets: |
             SONAR_DB_USER=/platform/truenas-db/sonarqube/username
             SONAR_DB_PASSWORD=/platform/truenas-db/sonarqube/password
-            SONAR_ADMIN_PASSCODE=/platform/sonarqube/admin-password
+            SONAR_ADMIN_PASSCODE=/platform/sonarqube/admin-passcode
             SONAR_ADMIN_PASSWORD=/platform/sonarqube/admin-password
             SONAR_OIDC_ISSUER=/platform/cognito/issuer-url
             SONAR_OIDC_CLIENT_ID=/platform/sonarqube/cognito-client-id

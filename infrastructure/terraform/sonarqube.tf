@@ -36,10 +36,30 @@ resource "aws_ssm_parameter" "sonarqube_cognito_client_secret" {
   value = aws_cognito_user_pool_client.sonarqube.client_secret
 }
 
+resource "random_password" "sonarqube_passcode" {
+  length  = 32
+  special = false
+}
+
+resource "aws_ssm_parameter" "sonarqube_admin_passcode" {
+  name  = "${local.ssm_prefix}/admin-passcode"
+  type  = "SecureString"
+  value = random_password.sonarqube_passcode.result
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
+resource "random_password" "sonarqube_admin_password" {
+  length  = 32
+  special = false
+}
+
 resource "aws_ssm_parameter" "sonarqube_admin_password" {
   name  = "${local.ssm_prefix}/admin-password"
   type  = "SecureString"
-  value = "PLACEHOLDER"
+  value = random_password.sonarqube_admin_password.result
 
   lifecycle {
     ignore_changes = [value]
