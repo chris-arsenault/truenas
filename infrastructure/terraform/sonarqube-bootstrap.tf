@@ -13,8 +13,15 @@ data "aws_ssm_parameter" "private_subnet_ids" {
   name = "/platform/network/private-subnet-ids"
 }
 
-data "aws_ssm_parameter" "lambda_security_group_id" {
-  name = "/platform/network/lambda-security-group-id"
+data "aws_security_group" "sonar_proxy" {
+  filter {
+    name   = "tag:sg:role"
+    values = ["reverse-proxy"]
+  }
+  filter {
+    name   = "tag:sg:scope"
+    values = ["sonar.ahara.io"]
+  }
 }
 
 data "aws_iam_policy_document" "lambda_assume" {
@@ -83,7 +90,7 @@ resource "aws_lambda_function" "sonarqube_bootstrap" {
 
   vpc_config {
     subnet_ids         = split(",", nonsensitive(data.aws_ssm_parameter.private_subnet_ids.value))
-    security_group_ids = [nonsensitive(data.aws_ssm_parameter.lambda_security_group_id.value)]
+    security_group_ids = [data.aws_security_group.sonar_proxy.id]
   }
 
   environment {
