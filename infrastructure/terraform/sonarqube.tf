@@ -57,13 +57,10 @@ resource "random_password" "sonarqube_admin_password" {
 }
 
 resource "aws_ssm_parameter" "sonarqube_admin_password" {
-  name  = "${local.ssm_prefix}/admin-password"
-  type  = "SecureString"
-  value = random_password.sonarqube_admin_password.result
-
-  lifecycle {
-    ignore_changes = [value]
-  }
+  name      = "${local.ssm_prefix}/admin-password"
+  type      = "SecureString"
+  value     = random_password.sonarqube_admin_password.result
+  overwrite = true
 }
 
 resource "aws_ssm_parameter" "sonarqube_url" {
