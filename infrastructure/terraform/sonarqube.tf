@@ -52,8 +52,9 @@ resource "aws_ssm_parameter" "sonarqube_admin_passcode" {
 }
 
 resource "random_password" "sonarqube_admin_password" {
-  length  = 32
-  special = false
+  length           = 32
+  special          = true
+  override_special = "!@#$%^&*"
 }
 
 resource "aws_ssm_parameter" "sonarqube_admin_password" {
