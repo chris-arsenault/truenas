@@ -53,13 +53,13 @@ async fn wait_for_healthy(http: &reqwest::Client, base_url: &str) -> Result<(), 
 async fn create_ci_token(
     http: &reqwest::Client,
     base_url: &str,
-    admin_password: &str,
+    scanner_password: &str,
 ) -> Result<String, String> {
     // Revoke existing CI token (ignore errors)
     let revoke_resp = http
         .post(format!("{base_url}/api/user_tokens/revoke"))
-        .basic_auth("admin", Some(admin_password))
-        .form(&[("login", "admin"), ("name", "ci")])
+        .basic_auth("scanner", Some(scanner_password))
+        .form(&[("login", "scanner"), ("name", "ci")])
         .send()
         .await;
     match &revoke_resp {
@@ -67,11 +67,11 @@ async fn create_ci_token(
         Err(e) => info!(error = %e, "Revoke request failed (continuing)"),
     }
 
-    // Generate new token
+    // Generate new token for the scanner user
     let resp = http
         .post(format!("{base_url}/api/user_tokens/generate"))
-        .basic_auth("admin", Some(admin_password))
-        .form(&[("login", "admin"), ("name", "ci"), ("type", "USER_TOKEN")])
+        .basic_auth("scanner", Some(scanner_password))
+        .form(&[("login", "scanner"), ("name", "ci"), ("type", "USER_TOKEN")])
         .send()
         .await
         .map_err(|e| format!("Failed to call token API: {e}"))?;
@@ -102,7 +102,7 @@ async fn create_ci_token(
 
 async fn handler(event: LambdaEvent<serde_json::Value>) -> Result<serde_json::Value, Error> {
     let (payload, _ctx) = event.into_parts();
-    info!(event = %payload, "SonarQube bootstrap invoked");
+    info!(event = %payload, "SonarQube CI token Lambda invoked");
 
     let request: Request = serde_json::from_value(payload)?;
 
@@ -113,12 +113,13 @@ async fn handler(event: LambdaEvent<serde_json::Value>) -> Result<serde_json::Va
 
             let base_url =
                 env::var("SONARQUBE_URL").unwrap_or_else(|_| "http://192.168.66.3:30090".into());
-            let admin_password = get_ssm_value(&ssm, "/platform/sonarqube/admin-password").await?;
+            let scanner_password =
+                get_ssm_value(&ssm, "/platform/sonarqube/scanner-password").await?;
 
             let http = reqwest::Client::new();
 
             wait_for_healthy(&http, &base_url).await?;
-            let token = create_ci_token(&http, &base_url, &admin_password).await?;
+            let token = create_ci_token(&http, &base_url, &scanner_password).await?;
 
             // Write token to SSM
             ssm.put_parameter()

@@ -38,13 +38,14 @@ services:
     restart: "no"
     environment:
       SONAR_ADMIN_PASSWORD: "${SONAR_ADMIN_PASSWORD}"
+      SONAR_SCANNER_PASSWORD: "${SONAR_SCANNER_PASSWORD}"
     entrypoint: ["sh", "-c"]
     command:
       - |
         API="http://sonarqube:9000/api"
-
-        # Change default admin password to the SSM-managed password
         RESP=$$(mktemp)
+
+        # --- Change default admin password ---
         HTTP_CODE=$$(curl -s -o "$$RESP" -w '%{http_code}' \
           -u admin:admin \
           -X POST "$${API}/users/change_password" \
@@ -54,9 +55,40 @@ services:
         case "$$HTTP_CODE" in
           204) echo "Admin password set from SSM" ;;
           401) echo "Admin password already changed, skipping" ;;
-          *)   echo "WARNING: HTTP $$HTTP_CODE"; cat "$$RESP"; echo; exit 1 ;;
+          *)   echo "WARNING: admin password change HTTP $$HTTP_CODE"; cat "$$RESP"; echo; exit 1 ;;
         esac
+
+        AUTH="admin:$${SONAR_ADMIN_PASSWORD}"
+
+        # --- Create scanner user (ignore if exists) ---
+        HTTP_CODE=$$(curl -s -o "$$RESP" -w '%{http_code}' \
+          -u "$$AUTH" \
+          -X POST "$${API}/users/create" \
+          --data-urlencode "login=scanner" \
+          --data-urlencode "name=CI Scanner" \
+          --data-urlencode "password=$${SONAR_SCANNER_PASSWORD}" \
+          --data-urlencode "local=true")
+        case "$$HTTP_CODE" in
+          200) echo "Scanner user created" ;;
+          400) echo "Scanner user already exists" ;;
+          *)   echo "WARNING: scanner user create HTTP $$HTTP_CODE"; cat "$$RESP"; echo; exit 1 ;;
+        esac
+
+        # --- Grant scanner global permissions ---
+        for PERM in scan provisioning; do
+          HTTP_CODE=$$(curl -s -o "$$RESP" -w '%{http_code}' \
+            -u "$$AUTH" \
+            -X POST "$${API}/permissions/add_user" \
+            --data-urlencode "login=scanner" \
+            --data-urlencode "permission=$$PERM")
+          case "$$HTTP_CODE" in
+            204) echo "Granted $$PERM to scanner" ;;
+            *)   echo "WARNING: grant $$PERM HTTP $$HTTP_CODE"; cat "$$RESP"; echo; exit 1 ;;
+          esac
+        done
+
         rm -f "$$RESP"
+        echo "Bootstrap complete"
 
 volumes:
   sonarqube_data:
