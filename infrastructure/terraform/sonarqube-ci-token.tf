@@ -43,7 +43,7 @@ data "archive_file" "sonarqube_ci_token" {
 }
 
 resource "aws_iam_role" "sonarqube_ci_token" {
-  name               = "truenas-sonarqube-ci-token"
+  name               = "${local.prefix}-ci-token"
   assume_role_policy = data.aws_iam_policy_document.lambda_assume.json
 }
 
@@ -58,7 +58,7 @@ resource "aws_iam_role_policy_attachment" "sonarqube_ci_token_vpc" {
 }
 
 resource "aws_iam_role_policy" "sonarqube_ci_token_ssm" {
-  name = "truenas-sonarqube-ci-token-ssm"
+  name = "${local.prefix}-ci-token-ssm"
   role = aws_iam_role.sonarqube_ci_token.id
   policy = jsonencode({
     Version = "2012-10-17"
@@ -78,7 +78,7 @@ resource "aws_iam_role_policy" "sonarqube_ci_token_ssm" {
 }
 
 resource "aws_lambda_function" "sonarqube_ci_token" {
-  function_name = "truenas-sonarqube-ci-token"
+  function_name = "${local.prefix}-ci-token"
   role          = aws_iam_role.sonarqube_ci_token.arn
   handler       = "bootstrap"
   runtime       = "provided.al2023"

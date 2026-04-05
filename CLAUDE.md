@@ -1,6 +1,6 @@
-# TrueNAS
+# NAS SonarQube
 
-TrueNAS server management. Docker Compose stacks deployed via Komodo. SonarQube CI token Lambda.
+SonarQube instance on TrueNAS. Docker Compose stack deployed via Komodo. CI token Lambda for scanner authentication.
 
 ## Pre-commit CI check
 

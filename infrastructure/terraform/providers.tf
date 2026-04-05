@@ -14,7 +14,7 @@ terraform {
 
   backend "s3" {
     region       = "us-east-1"
-    key          = "projects/truenas.tfstate"
+    key          = "projects/nas-sonarqube.tfstate"
     encrypt      = true
     use_lockfile = true
   }
@@ -25,7 +25,7 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Project   = "truenas"
+      Project   = "nas-sonarqube"
       ManagedBy = "Terraform"
     }
   }
