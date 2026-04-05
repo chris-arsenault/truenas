@@ -1,2 +1,5 @@
 project: sonarqube
 prefix: sonarqube
+stack:
+  - rust
+  - terraform
