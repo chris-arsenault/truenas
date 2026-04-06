@@ -18,26 +18,16 @@ data "aws_security_group" "sonar_proxy" {
   }
 }
 
-data "aws_iam_policy_document" "lambda_assume" {
-  statement {
-    effect = "Allow"
-    principals {
-      type        = "Service"
-      identifiers = ["lambda.amazonaws.com"]
-    }
-    actions = ["sts:AssumeRole"]
-  }
-}
-
-data "archive_file" "sonarqube_ci_token" {
-  type        = "zip"
-  source_file = "${path.module}/../../backend/target/lambda/sonarqube-ci-token/bootstrap"
-  output_path = "${path.module}/sonarqube-ci-token-lambda.zip"
-}
-
 resource "aws_iam_role" "sonarqube_ci_token" {
-  name               = "${local.prefix}-ci-token"
-  assume_role_policy = data.aws_iam_policy_document.lambda_assume.json
+  name = "${local.prefix}-ci-token"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "lambda.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
 }
 
 resource "aws_iam_role_policy_attachment" "sonarqube_ci_token_basic" {
@@ -70,32 +60,23 @@ resource "aws_iam_role_policy" "sonarqube_ci_token_ssm" {
   })
 }
 
-resource "aws_lambda_function" "sonarqube_ci_token" {
-  function_name = "${local.prefix}-ci-token"
-  role          = aws_iam_role.sonarqube_ci_token.arn
-  handler       = "bootstrap"
-  runtime       = "provided.al2023"
+module "sonarqube_ci_token" {
+  source             = "git::https://github.com/chris-arsenault/ahara-tf-patterns.git//modules/lambda"
+  name               = "${local.prefix}-ci-token"
+  binary             = "${path.module}/../../backend/target/lambda/sonarqube-ci-token/bootstrap"
+  role_arn           = aws_iam_role.sonarqube_ci_token.arn
+  timeout            = 660
+  memory             = 128
+  subnet_ids         = module.ctx.private_subnet_ids
+  security_group_ids = [data.aws_security_group.sonar_proxy.id]
 
-  filename         = data.archive_file.sonarqube_ci_token.output_path
-  source_code_hash = data.archive_file.sonarqube_ci_token.output_base64sha256
-
-  timeout     = 660
-  memory_size = 128
-
-  vpc_config {
-    subnet_ids         = module.ctx.private_subnet_ids
-    security_group_ids = [data.aws_security_group.sonar_proxy.id]
-  }
-
-  environment {
-    variables = {
-      SONARQUBE_URL = "http://192.168.66.3:30090"
-    }
+  environment = {
+    SONARQUBE_URL = "http://192.168.66.3:30090"
   }
 }
 
 resource "aws_ssm_parameter" "sonarqube_ci_token_function" {
   name  = "/platform/sonarqube/ci-token-function-name"
   type  = "String"
-  value = aws_lambda_function.sonarqube_ci_token.function_name
+  value = module.sonarqube_ci_token.function_name
 }
