@@ -2,22 +2,10 @@
 # SonarQube Cognito Client (OAuth2 code flow for SonarQube OIDC plugin)
 # =============================================================================
 
-resource "aws_cognito_user_pool_client" "sonarqube" {
-  name         = "sonarqube"
-  user_pool_id = nonsensitive(data.aws_ssm_parameter.cognito_user_pool_id.value)
-
-  generate_secret                      = true
-  allowed_oauth_flows                  = ["code"]
-  allowed_oauth_scopes                 = ["openid", "email", "profile"]
-  allowed_oauth_flows_user_pool_client = true
-  callback_urls                        = ["https://${local.sonarqube_domain}/oauth2/callback/oidc"]
-  supported_identity_providers         = ["COGNITO"]
-
-  explicit_auth_flows = [
-    "ALLOW_USER_PASSWORD_AUTH",
-    "ALLOW_REFRESH_TOKEN_AUTH",
-    "ALLOW_USER_SRP_AUTH"
-  ]
+module "cognito" {
+  source        = "git::https://github.com/chris-arsenault/ahara-tf-patterns.git//modules/cognito-app"
+  name          = "sonarqube"
+  callback_urls = ["https://${local.sonarqube_domain}/oauth2/callback/oidc"]
 }
 
 # =============================================================================
@@ -27,13 +15,13 @@ resource "aws_cognito_user_pool_client" "sonarqube" {
 resource "aws_ssm_parameter" "sonarqube_cognito_client_id" {
   name  = "${local.ssm_prefix}/cognito-client-id"
   type  = "String"
-  value = aws_cognito_user_pool_client.sonarqube.id
+  value = module.cognito.client_id
 }
 
 resource "aws_ssm_parameter" "sonarqube_cognito_client_secret" {
   name  = "${local.ssm_prefix}/cognito-client-secret"
   type  = "SecureString"
-  value = aws_cognito_user_pool_client.sonarqube.client_secret
+  value = module.cognito.client_secret
 }
 
 resource "random_password" "sonarqube_admin_password" {
@@ -82,5 +70,5 @@ resource "aws_ssm_parameter" "sonarqube_ci_token" {
 resource "aws_ssm_parameter" "sonarqube_auth_client_entry" {
   name  = "/platform/auth-trigger/clients/sonarqube"
   type  = "String"
-  value = aws_cognito_user_pool_client.sonarqube.id
+  value = module.cognito.client_id
 }

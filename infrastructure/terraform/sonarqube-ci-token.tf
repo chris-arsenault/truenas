@@ -7,13 +7,6 @@
 # Runs in VPC to reach SonarQube at 192.168.66.3:30090 via WireGuard VPN.
 # =============================================================================
 
-data "aws_subnets" "private" {
-  filter {
-    name   = "tag:subnet:access"
-    values = ["private"]
-  }
-}
-
 data "aws_security_group" "sonar_proxy" {
   filter {
     name   = "tag:sg:role"
@@ -90,7 +83,7 @@ resource "aws_lambda_function" "sonarqube_ci_token" {
   memory_size = 128
 
   vpc_config {
-    subnet_ids         = data.aws_subnets.private.ids
+    subnet_ids         = module.ctx.private_subnet_ids
     security_group_ids = [data.aws_security_group.sonar_proxy.id]
   }
 
