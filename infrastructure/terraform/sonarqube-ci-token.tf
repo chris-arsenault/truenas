@@ -38,12 +38,12 @@ resource "aws_iam_role_policy" "sonarqube_ci_token_ssm" {
       {
         Effect   = "Allow"
         Action   = ["ssm:GetParameter"]
-        Resource = ["arn:aws:ssm:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:parameter/platform/sonarqube/scanner-password"]
+        Resource = ["arn:aws:ssm:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:parameter/platform/sonarqube/scanner-password"]
       },
       {
         Effect   = "Allow"
         Action   = ["ssm:PutParameter"]
-        Resource = ["arn:aws:ssm:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:parameter/platform/sonarqube/ci-token"]
+        Resource = ["arn:aws:ssm:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:parameter/platform/sonarqube/ci-token"]
       }
     ]
   })

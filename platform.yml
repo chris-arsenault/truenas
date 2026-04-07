@@ -4,3 +4,6 @@ stack:
   - rust
   - terraform
 truenas: true
+rust_artifacts:
+  lambdas:
+    - sonarqube-ci-token
